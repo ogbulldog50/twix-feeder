@@ -20,7 +20,7 @@ Smart ESP32-powered pet-feeder with Home Assistant automation, scheduling, and m
 
 Click this link in Home Assistant:
 
-👉 [Import Twix Feeder Blueprint](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://github.com/pricklyguy/twix-feeder/blob/main/blueprints/automation/pricklyguy/twix_feeder_slot.yaml)
+👉 [Import Twix Feeder Blueprint](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/ogbulldog50/twix-feeder/main/blueprints/automation/pricklyguy/twix_feeder_slot.yaml)
 
 Then create four automations (Slot 1–4) and select:
 - `input_boolean.feed_slot#_enabled`
