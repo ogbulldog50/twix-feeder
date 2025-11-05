@@ -1,1 +1,160 @@
-HA Package content
+###############################################################################
+# 🐱  Twix Feeder Core Package
+# Author: Prickly Guy Creations
+# Version: 1.0.0
+# Description: Provides helper entities, daily tracking, and manual feed scripts
+###############################################################################
+
+# ────────────────
+#  INPUT HELPERS
+# ────────────────
+input_boolean:
+  feed_slot1_enabled:
+    name: Slot 1 Enabled
+    icon: mdi:cat
+  feed_slot2_enabled:
+    name: Slot 2 Enabled
+    icon: mdi:cat
+  feed_slot3_enabled:
+    name: Slot 3 Enabled
+    icon: mdi:cat
+  feed_slot4_enabled:
+    name: Slot 4 Enabled
+    icon: mdi:cat
+
+input_datetime:
+  feed_slot1_time:
+    name: Slot 1 Time
+    has_time: true
+  feed_slot2_time:
+    name: Slot 2 Time
+    has_time: true
+  feed_slot3_time:
+    name: Slot 3 Time
+    has_time: true
+  feed_slot4_time:
+    name: Slot 4 Time
+    has_time: true
+
+input_number:
+  feed_slot1_portions:
+    name: Slot 1 Portions
+    min: 1
+    max: 6
+    step: 1
+    icon: mdi:bowl
+  feed_slot2_portions:
+    name: Slot 2 Portions
+    min: 1
+    max: 6
+    step: 1
+    icon: mdi:bowl
+  feed_slot3_portions:
+    name: Slot 3 Portions
+    min: 1
+    max: 6
+    step: 1
+    icon: mdi:bowl
+  feed_slot4_portions:
+    name: Slot 4 Portions
+    min: 1
+    max: 6
+    step: 1
+    icon: mdi:bowl
+  twix_feed_portions_today:
+    name: Portions Dispensed Today
+    min: 0
+    max: 200
+    step: 1
+    mode: box
+    icon: mdi:counter
+
+# ────────────────
+#  AUTOMATIONS
+# ────────────────
+automation:
+  - id: twix_feeder_reset_daily_portions
+    alias: 🐾 Reset Daily Portion Counter
+    trigger:
+      - platform: time
+        at: "00:00:00"
+    action:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.twix_feed_portions_today
+        data:
+          value: 0
+
+  - id: twix_feeder_log_new_portions
+    alias: 🐾 Log New Portions Dispensed
+    trigger:
+      - platform: state
+        entity_id: sensor.twix_feeder_total_portions_dispensed
+    variables:
+      portions_dispensed: "{{ (trigger.to_state.state | float(0) - trigger.from_state.state | float(0)) | round(0) }}"
+    condition:
+      - condition: template
+        value_template: "{{ portions_dispensed > 0 }}"
+    action:
+      - service: input_number.set_value
+        data:
+          value: >
+            {% set current = states('input_number.twix_feed_portions_today') | float(0) %}
+            {{ current + portions_dispensed }}
+        target:
+          entity_id: input_number.twix_feed_portions_today
+
+# ────────────────
+#  SCRIPTS
+# ────────────────
+script:
+  twix_play_chowtime:
+    alias: Play Chow Time Chime
+    sequence:
+      - service: chime_tts.say
+        target:
+          entity_id: media_player.announcement
+        data:
+          chime_path: /config/media/sounds/Cat_Beep.mp3
+          message: "Chow time!"
+          tts_speed: 125
+          volume_level: 0.5
+          cache: true
+          announce: true
+
+  twix_manual_feed_1:
+    alias: Feed 1 Portion
+    sequence:
+      - service: script.turn_on
+        target: { entity_id: script.twix_play_chowtime }
+      - service: number.set_value
+        target: { entity_id: number.twix_feeder_ha_target_pulses }
+        data: { value: 1 }
+      - delay: "00:00:00.5"
+      - service: button.press
+        target: { entity_id: button.twix_feeder_execute_feed_action }
+
+  twix_manual_feed_2:
+    alias: Feed Snack (2 Portions)
+    sequence:
+      - service: script.turn_on
+        target: { entity_id: script.twix_play_chowtime }
+      - service: number.set_value
+        target: { entity_id: number.twix_feeder_ha_target_pulses }
+        data: { value: 2 }
+      - delay: "00:00:00.5"
+      - service: button.press
+        target: { entity_id: button.twix_feeder_execute_feed_action }
+
+  twix_manual_feed_3:
+    alias: Feed Meal (3 Portions)
+    sequence:
+      - service: script.turn_on
+        target: { entity_id: script.twix_play_chowtime }
+      - service: number.set_value
+        target: { entity_id: number.twix_feeder_ha_target_pulses }
+        data: { value: 3 }
+      - delay: "00:00:00.5"
+      - service: button.press
+        target: { entity_id: button.twix_feeder_execute_feed_action }
+
