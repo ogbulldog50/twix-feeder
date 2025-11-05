@@ -1,1 +1,85 @@
-Dashboard Setup
+###############################################################################
+# 🐱  Twix Mobile Dashboard
+# Version: 1.0.0
+# Description: Mobile-friendly interface for Twix Feeder controls
+###############################################################################
+type: custom:masonry-layout
+path: twix-mobile
+title: Twix Mobile
+cards:
+  - type: vertical-stack
+    cards:
+      - type: custom:mod-card
+        card_mod:
+          style: |
+            ha-card {
+              background: radial-gradient(circle at 50% 0%, rgba(30, 144, 255, 0.3), rgba(0,0,0,0.25));
+              border: 3px solid rgba(30, 144, 255, 0.8);
+              border-radius: 20px;
+              box-shadow:
+                0 0 12px rgba(30, 144, 255, 0.9),
+                inset 0 0 20px rgba(30, 144, 255, 0.1);
+              padding: 20px;
+              max-width: 1100px;
+              margin: auto;
+            }
+            @media (max-width: 600px) {
+              ha-card { padding: 10px; }
+            }
+        card:
+          type: vertical-stack
+          cards:
+            - type: custom:mushroom-title-card
+              title: 🐱 Twix Feeder Schedule
+              subtitle: Set feed times and portions
+            - type: vertical-stack
+              cards:
+                {% for n in range(1,5) %}
+                - type: custom:mod-card
+                  card_mod:
+                    style: |
+                      ha-card {
+                        {% raw %}{% if is_state('input_boolean.feed_slot{{n}}_enabled', 'on') %}{% endraw %}
+                          border: 2px solid rgba(30, 144, 255, 0.8);
+                          box-shadow: 0 0 8px rgba(30, 144, 255, 0.8);
+                        {% raw %}{% else %}{% endraw %}
+                          border: 1px solid var(--divider-color);
+                        {% raw %}{% endif %}{% endraw %}
+                        border-radius: 12px;
+                      }
+                  card:
+                    type: entities
+                    title: Slot {{n}}
+                    entities:
+                      - entity: input_boolean.feed_slot{{n}}_enabled
+                        name: Enabled
+                      - entity: input_datetime.feed_slot{{n}}_time
+                        name: Time
+                      - entity: input_number.feed_slot{{n}}_portions
+                        name: Portions
+                {% endfor %}
+            - type: custom:mushroom-title-card
+              title: 🐾 Manual Control
+              subtitle: Run a feed immediately
+            - type: grid
+              square: false
+              columns: 3
+              cards:
+                - type: custom:mushroom-template-card
+                  icon: mdi:hand-extended
+                  primary: Manual (1)
+                  tap_action: { action: call-service, service: script.twix_manual_feed_1 }
+                - type: custom:mushroom-template-card
+                  icon: mdi:cat
+                  primary: Snack (2)
+                  tap_action: { action: call-service, service: script.twix_manual_feed_2 }
+                - type: custom:mushroom-template-card
+                  icon: mdi:food-drumstick
+                  primary: Meal (3)
+                  tap_action: { action: call-service, service: script.twix_manual_feed_3 }
+            - type: custom:mushroom-entity-card
+              entity: input_number.twix_feed_portions_today
+              name: Total Portions Dispensed Today
+              icon: mdi:counter
+              icon_color: pink
+
