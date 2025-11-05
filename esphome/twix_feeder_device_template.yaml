@@ -1,1 +1,143 @@
-twix_feeder_device_template.yaml
+substitutions:
+  device_name: twix_feeder
+  friendly_name: Twix Feeder
+  project_name: pricklyguy.twix_feeder
+  project_version: "1.0.0"
+
+  motor_pin_pos: GPIO23
+  motor_pin_neg: GPIO19
+  pulse_pin: GPIO22
+  status_led_pin: GPIO2
+
+  pulse_timeout: 10s
+  debounce_time: 400ms
+  max_pulses: "10"
+  min_pulses: "0"
+  default_pulses: "1"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "ESP32 feeder motor control with pulse-based portions"
+  project:
+    name: ${project_name}
+    version: ${project_version}
+  platform: ESP32
+  framework:
+    type: arduino
+
+esp32:
+  board: esp32dev
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Setup"
+    password: ""
+
+captive_portal:
+improv_serial:
+web_server:
+  port: 80
+
+switch:
+  - platform: gpio
+    id: relay_motor_pos
+    pin: ${motor_pin_pos}
+    restore_mode: ALWAYS_OFF
+    internal: true
+
+  - platform: gpio
+    id: relay_motor_neg
+    pin: ${motor_pin_neg}
+    restore_mode: ALWAYS_OFF
+    internal: true
+
+sensor:
+  - platform: pulse_counter
+    id: feed_pulse_sensor
+    name: "${friendly_name} Feed Pulse Total"
+    pin: ${pulse_pin}
+    count_mode:
+      rising_edge: INCREMENT
+      falling_edge: DISABLE
+    use_pcnt: true
+    internal_filter: 10us
+    filters:
+      - debounce: ${debounce_time}
+    update_interval: 1s
+    total:
+      name: "${friendly_name} Total Portions Dispensed"
+      id: feed_pulse_total
+      unit_of_measurement: "portions"
+
+globals:
+  - id: feed_pulse_start
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+number:
+  - platform: template
+    name: "${friendly_name} Target Pulses"
+    id: ha_target_pulses
+    mode: box
+    min_value: ${min_pulses}
+    max_value: ${max_pulses}
+    step: 1
+    restore_value: yes
+    initial_value: ${default_pulses}
+    set_action:
+      lambda: 'id(ha_target_pulses).publish_state(x);'
+
+script:
+  - id: motor_on
+    then:
+      - switch.turn_on: relay_motor_pos
+      - switch.turn_on: relay_motor_neg
+
+  - id: motor_off
+    then:
+      - switch.turn_off: relay_motor_pos
+      - switch.turn_off: relay_motor_neg
+
+  - id: dispense_script
+    mode: restart
+    then:
+      - lambda: |-
+          int target_pulses = (int) id(ha_target_pulses).state;
+          id(feed_pulse_start) = id(feed_pulse_total).state;
+          ESP_LOGI("feeder", "Starting feed for %d pulses.", target_pulses);
+      - script.execute: motor_on
+      - wait_until:
+          condition:
+            lambda: |-
+              int target_pulses = (int) id(ha_target_pulses).state;
+              return (id(feed_pulse_total).state - id(feed_pulse_start)) >= target_pulses;
+          timeout: ${pulse_timeout}
+      - script.execute: motor_off
+      - homeassistant.service:
+          service: script.twix_feeder_increment_daily_count
+          data: {}
+
+button:
+  - platform: template
+    name: "${friendly_name} Feed Action"
+    id: execute_feed_action
+    icon: mdi:food-drumstick-outline
+    on_press:
+      - script.execute: dispense_script
+
+status_led:
+  pin: ${status_led_pin}
