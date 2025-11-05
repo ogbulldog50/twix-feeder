@@ -1,1 +1,82 @@
-Blueprint
+blueprint:
+  name: 🐱 Twix Feeder Slot Automation
+  description: >
+    Run a scheduled feeding slot for the Twix Feeder.  
+    Plays a "Chow Time" chime, sets the target portions, and tells the feeder to dispense.
+  domain: automation
+  author: Prickly Guy Creations
+  homeassistant:
+    min_version: 2024.6.0
+  source_url: https://github.com/pricklyguy/twix-feeder/blob/main/blueprints/automation/pricklyguy/twix_feeder_slot.yaml
+
+  input:
+    feeder_target_number:
+      name: Feeder Target Number
+      description: ESPHome Number entity controlling portion count
+      selector:
+        entity:
+          domain: number
+
+    feeder_button:
+      name: Feeder Execute Button
+      description: ESPHome Button entity that starts feeding
+      selector:
+        entity:
+          domain: button
+
+    chime_script:
+      name: Chow Time Script (optional)
+      description: Script that plays the "Chow Time" chime before feeding
+      default: []
+      selector:
+        entity:
+          domain: script
+
+    slot_enabled:
+      name: Slot Enabled Toggle
+      selector:
+        entity:
+          domain: input_boolean
+
+    slot_time:
+      name: Slot Time
+      selector:
+        entity:
+          domain: input_datetime
+
+    slot_portions:
+      name: Slot Portions
+      selector:
+        entity:
+          domain: input_number
+
+mode: single
+
+trigger:
+  - platform: time
+    at: !input slot_time
+
+condition:
+  - condition: state
+    entity_id: !input slot_enabled
+    state: "on"
+
+action:
+  - if:
+      - condition: template
+        value_template: "{{ not (is_state(!input chime_script, '')) }}"
+    then:
+      - service: script.turn_on
+        target:
+          entity_id: !input chime_script
+
+  - service: number.set_value
+    target:
+      entity_id: !input feeder_target_number
+    data:
+      value: "{{ states(!input slot_portions) | int }}"
+
+  - service: button.press
+    target:
+      entity_id: !input feeder_button
+
